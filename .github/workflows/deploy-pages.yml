@@ -1,0 +1,33 @@
+name: Deploy web to GitHub Pages
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", ".github/workflows/deploy-pages.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency: { group: pages, cancel-in-progress: true }
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject Supabase public config (anon key only)
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then echo "::error::repo Variables SUPABASE_URL / SUPABASE_ANON_KEY 未设置"; exit 1; fi
+          cat > web/js/config.js <<JS
+          export const SUPABASE_URL = "${SUPABASE_URL}";
+          export const SUPABASE_ANON_KEY = "${SUPABASE_ANON_KEY}";
+          export const LOCAL_PREVIEW = false;
+          JS
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: web }
+      - id: d
+        uses: actions/deploy-pages@v4
