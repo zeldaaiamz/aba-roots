@@ -43,16 +43,14 @@ $("#fq").addEventListener("keydown", (e) => e.key === "Enter" && load());
 $("#submit").onclick = async () => {
   if (!marks.size) return alert("本批还没有标记");
   if (marks.size < batch.length && !confirm(`还有 ${batch.length - marks.size} 条未标记，会留在待处理。继续？`)) return;
-  await rpc("aba_mark", { p_items: [...marks].map(([id, status]) => ({ id, status })), p_by: $("#who").textContent || null });
+  await rpc("aba_mark", { p_items: [...marks].map(([id, status]) => ({ id, status })), p_by: "web" });
   load();
 };
 async function boot() {
   if (!LOCAL_PREVIEW) {
     const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
     sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) { $("#login").hidden = false; $("#send").onclick = () => sb.auth.signInWithOtp({ email: $("#email").value, options: { emailRedirectTo: location.href } }).then(() => alert("已发送")); return; }
-    $("#who").textContent = session.user.email;
+    $("#who").textContent = "";
   } else $("#who").textContent = "本地预览";
   banner(); load();
 }
