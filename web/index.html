@@ -1,16 +1,14 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ABA 词根筛选</title><link rel="stylesheet" href="css/app.css"></head><body>
-<header><h1>ABA 词根筛选</h1><div id="prog"></div><div id="who"></div></header>
+<title>ABA 词根库</title><link rel="stylesheet" href="css/app.css"></head><body>
+<header><h1>ABA 词根库</h1><div id="prog"></div></header>
 <div id="example" hidden style="background:#fde68a;color:#7c2d12;padding:8px 12px;font-weight:600;text-align:center">⚠️ 示例数据（period = EXAMPLE，虚构样本，非真实 ABA 导出）</div>
 <section class="bar">
-  <label>类型 <select id="ftype"><option value="">全部</option><option>specific</option><option>general</option><option>bundle</option></select></label>
+  <label>状态 <select id="ff"><option value="all">全部</option><option value="unsent">未发送</option><option value="sent">已发送</option></select></label>
   <label>搜索 <input id="fq" placeholder="词根包含…"></label>
-  <label>每批 <select id="fn"><option>50</option><option selected>100</option><option>200</option></select></label>
-  <button id="reload" class="ghost">重新取批</button>
+  <label>每页 <select id="fn"><option>50</option><option selected>100</option><option>200</option></select></label>
   <span class="sp"></span>
-  <button id="allin" class="ghost">未标记全部→采用</button><button id="allout" class="ghost">未标记全部→排除</button>
-  <button id="submit" class="primary">提交本批并取下一批</button>
+  <button id="prev" class="ghost">上一页</button><span id="page"></span><button id="next" class="ghost">下一页</button>
 </section>
-<p class="hint">只显示待处理（pending）词根，按最佳 ABA 排名、出现次数排序。每条标「采用 / 排除」，提交后状态写库，再取下一批。未标记的留在待处理。</p>
-<table><thead><tr><th>#</th><th>词根</th><th>类型</th><th>最佳排名</th><th>出现</th><th>示例搜索词</th><th>标记</th></tr></thead><tbody id="rows"></tbody></table>
+<p class="hint">只读展示。下游网站领取数据后，对应词根自动标记为「已发送」。按最佳 ABA 排名、出现次数排序。</p>
+<table><thead><tr><th>#</th><th>词根</th><th>类型</th><th>最佳排名</th><th>出现</th><th>修饰词</th><th>状态</th><th>发送时间</th></tr></thead><tbody id="rows"></tbody></table>
 <script type="module" src="js/app.js"></script></body></html>

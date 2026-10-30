@@ -1,7 +1,8 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY, LOCAL_PREVIEW } from "./config.js";
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-let sb = null, batch = [], marks = new Map();
+const fmt = (t) => t ? new Date(t).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false }) : "—";
+let sb = null, offset = 0, total = 0;
 async function rpc(fn, args) {
   if (LOCAL_PREVIEW) {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(args) });
@@ -10,48 +11,37 @@ async function rpc(fn, args) {
   const { data, error } = await sb.rpc(fn, args); if (error) throw error; return data;
 }
 async function progress() {
-  const p = Object.fromEntries((await rpc("aba_progress", {})).map((x) => [x.status, x.n]));
-  $("#prog").textContent = `待处理 ${p.pending || 0} · 采用 ${p.adopted || 0} · 排除 ${p.excluded || 0}`;
+  const p = (await rpc("aba_progress", {}))[0] || {};
+  $("#prog").textContent = `共 ${p.total || 0} · 未发送 ${p.unsent || 0} · 已发送 ${p.sent || 0}`;
 }
 async function banner() {
   try { const ps = await rpc("aba_periods", {}); $("#example").hidden = !ps.some((x) => x.period === "EXAMPLE"); } catch (e) {}
 }
 async function load() {
-  marks.clear();
-  batch = await rpc("aba_next_batch", { p_limit: +$("#fn").value, p_type: $("#ftype").value || null, p_q: $("#fq").value.trim() || null });
-  render(); progress();
-}
-function render() {
-  $("#rows").innerHTML = batch.map((r, i) => {
-    const m = marks.get(r.id) || "";
-    return `<tr class="m-${m}" data-id="${r.id}"><td>${i + 1}</td><td class="root">${esc(r.root_word)}</td>
-<td><span class="t t-${r.root_type}">${r.root_type}</span>${r.is_name_ip ? '<span class="t ip">人名/IP</span>' : ""}</td>
+  const n = +$("#fn").value;
+  const rows = await rpc("aba_list_roots", { p_filter: $("#ff").value, p_limit: n, p_offset: offset, p_q: $("#fq").value.trim() || null });
+  total = rows.length ? +rows[0].total : 0;
+  $("#rows").innerHTML = rows.map((r, i) => `<tr><td>${offset + i + 1}</td><td class="root">${esc(r.root_word)}</td>
+<td><span class="t t-${esc(r.root_type)}">${esc(r.root_type)}</span>${r.is_name_ip ? '<span class="t ip">人名/IP</span>' : ""}</td>
 <td>${r.best_rank ?? "—"}</td><td>${r.term_count}</td>
-<td class="ex">${(r.examples || []).map((e) => `<span>${esc(e)}</span>`).join("")}</td>
-<td class="seg"><button class="in ${m === "adopted" ? "on" : ""}" data-m="adopted">采用</button><button class="out ${m === "excluded" ? "on" : ""}" data-m="excluded">排除</button></td></tr>`;
-  }).join("") || `<tr><td colspan="7">没有待处理词根 🎉</td></tr>`;
-  $("#submit").textContent = `提交本批（已标 ${marks.size}/${batch.length}）并取下一批`;
+<td class="ex">${(r.modifiers || []).map((e) => `<span>${esc(e)}</span>`).join("") || "—"}</td>
+<td>${r.sent_at ? `<span class="badge sent" title="${esc(r.sent_to)}">已发送</span>` : '<span class="badge unsent">未发送</span>'}</td>
+<td>${fmt(r.sent_at)}</td></tr>`).join("") || `<tr><td colspan="8">没有数据</td></tr>`;
+  const pages = Math.max(1, Math.ceil(total / n));
+  $("#page").textContent = ` 第 ${Math.floor(offset / n) + 1}/${pages} 页（${total} 条） `;
+  $("#prev").disabled = offset === 0; $("#next").disabled = offset + n >= total;
+  progress();
 }
-$("#rows").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-m]"); if (!b) return;
-  const id = +b.closest("tr").dataset.id; marks.get(id) === b.dataset.m ? marks.delete(id) : marks.set(id, b.dataset.m); render();
-});
-const fill = (m) => { batch.forEach((r) => marks.has(r.id) || marks.set(r.id, m)); render(); };
-$("#allin").onclick = () => fill("adopted"); $("#allout").onclick = () => fill("excluded");
-$("#reload").onclick = load; $("#ftype").onchange = load; $("#fn").onchange = load;
-$("#fq").addEventListener("keydown", (e) => e.key === "Enter" && load());
-$("#submit").onclick = async () => {
-  if (!marks.size) return alert("本批还没有标记");
-  if (marks.size < batch.length && !confirm(`还有 ${batch.length - marks.size} 条未标记，会留在待处理。继续？`)) return;
-  await rpc("aba_mark", { p_items: [...marks].map(([id, status]) => ({ id, status })), p_by: "web" });
-  load();
-};
+const reset = () => { offset = 0; load(); };
+$("#ff").onchange = reset; $("#fn").onchange = reset;
+$("#fq").addEventListener("keydown", (e) => e.key === "Enter" && reset());
+$("#prev").onclick = () => { offset = Math.max(0, offset - +$("#fn").value); load(); };
+$("#next").onclick = () => { offset += +$("#fn").value; load(); };
 async function boot() {
   if (!LOCAL_PREVIEW) {
     const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
     sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    $("#who").textContent = "";
-  } else $("#who").textContent = "本地预览";
+  }
   banner(); load();
 }
 boot();
