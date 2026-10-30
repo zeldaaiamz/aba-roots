@@ -37,19 +37,34 @@ python aba_roots.py --csv aba.csv --max-rank 50000 --batch 30 --period 2026-10  
 3. 仓库 Variables 设 SUPABASE_URL / SUPABASE_ANON_KEY；加 Pages Actions：构建时写 `web/js/config.js`（LOCAL_PREVIEW=false），发布 `web/`；Supabase Auth 的 Redirect URLs 加 Pages 地址
 4. 跑管线：数据只跑一次，可在 box 或 ECS `/opt/aba-roots` 手动执行（无需 systemd/定时），DSN 用 Supabase 直连串（service 角色），密钥只放 env 文件
 
-## 下游领取（migration 003）
+## 下游领取（migration 004：每个下游独立跟踪）
 
-- 网站（anon）只读：`aba_list_roots(p_filter all|unsent|sent, p_limit, p_offset, p_q)`、`aba_progress()` → total/unsent/sent。
-- 下游服务端（**仅 service_role**，anon/authenticated 调用会被拒绝）：
-  - `aba_claim_batch(p_limit default 100, p_consumer text)`：原子领取下一批未发送词根（按 best_rank，`FOR UPDATE SKIP LOCKED`，并发安全），同时写 `sent_at=now()`、`sent_to=consumer` 并返回。
-  - `aba_mark_sent(p_ids bigint[], p_consumer text)`：按 id 手动标记已发送。
-- `aba_mark`（采用/排除）已撤销所有客户端执行权限，不再使用。
+下游白名单（其它值报错 22023）：`selection-radar`（选品雷达，etsy-analyzer）、`sif-root-finder`（SIF词根，root-finder）。
+两个下游拿到的是同一批词根，各自的「已发送」互不影响；发送记录在 `aba_root_sends(root_id, consumer, sent_at)`（RLS 开启，anon 无表权限）。
+
+- 网站（anon）只读：`aba_list_roots(p_filter all|unsent|sent, p_consumer, p_limit, p_offset, p_q)` → 每行含 `radar_sent_at` / `sif_sent_at`；`aba_progress()` → total、radar_sent/radar_unsent、sif_sent/sif_unsent。
+- 下游服务端（**仅 service_role**）：
+  - `aba_claim_batch(p_consumer text 必填, p_limit default 5)`：按 best_rank 原子领取该下游尚未发送的下一批，写入发送记录并返回（按 consumer 的 advisory lock 串行化 + 主键防重，并发安全）。
+  - `aba_mark_sent(p_ids bigint[], p_consumer text)`：按 id 手动为该下游标记已发送。
 
 ```bash
+# 选品雷达
 curl -s -X POST "https://oiymgpargbesvcfxyksj.supabase.co/rest/v1/rpc/aba_claim_batch" \
-  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "apikey: <SERVICE_ROLE_KEY>" -H "Authorization: Bearer <SERVICE_ROLE_KEY>" \
   -H "Content-Type: application/json" \
-  -d '{"p_limit": 100, "p_consumer": "my-downstream-site"}'
+  -d '{"p_consumer": "selection-radar", "p_limit": 5}'
+
+# SIF词根（root-finder）
+curl -s -X POST "https://oiymgpargbesvcfxyksj.supabase.co/rest/v1/rpc/aba_claim_batch" \
+  -H "apikey: <SERVICE_ROLE_KEY>" -H "Authorization: Bearer <SERVICE_ROLE_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"p_consumer": "sif-root-finder", "p_limit": 5}'
+
+# 手动标记
+curl -s -X POST "https://oiymgpargbesvcfxyksj.supabase.co/rest/v1/rpc/aba_mark_sent" \
+  -H "apikey: <SERVICE_ROLE_KEY>" -H "Authorization: Bearer <SERVICE_ROLE_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"p_ids": [1,2,3], "p_consumer": "sif-root-finder"}'
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` 只放在下游服务器环境变量中，切勿放进前端或提交到仓库。

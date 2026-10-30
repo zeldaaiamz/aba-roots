@@ -3,12 +3,12 @@
 <header><h1>ABA 词根库</h1><div id="prog"></div></header>
 <div id="example" hidden style="background:#fde68a;color:#7c2d12;padding:8px 12px;font-weight:600;text-align:center">⚠️ 示例数据（period = EXAMPLE，虚构样本，非真实 ABA 导出）</div>
 <section class="bar">
-  <label>状态 <select id="ff"><option value="all">全部</option><option value="unsent">未发送</option><option value="sent">已发送</option></select></label>
+  <label>状态 <select id="ff"><option value="all">全部</option><option value="unsent:selection-radar">未发送到 选品雷达</option><option value="sent:selection-radar">已发送到 选品雷达</option><option value="unsent:sif-root-finder">未发送到 SIF词根</option><option value="sent:sif-root-finder">已发送到 SIF词根</option></select></label>
   <label>搜索 <input id="fq" placeholder="词根包含…"></label>
   <label>每页 <select id="fn"><option>50</option><option selected>100</option><option>200</option></select></label>
   <span class="sp"></span>
   <button id="prev" class="ghost">上一页</button><span id="page"></span><button id="next" class="ghost">下一页</button>
 </section>
-<p class="hint">只读展示。下游网站领取数据后，对应词根自动标记为「已发送」。按最佳 ABA 排名、出现次数排序。</p>
-<table><thead><tr><th>#</th><th>词根</th><th>类型</th><th>最佳排名</th><th>出现</th><th>修饰词</th><th>状态</th><th>发送时间</th></tr></thead><tbody id="rows"></tbody></table>
+<p class="hint">只读展示。两个下游（选品雷达 / SIF词根）各自独立领取，领取后该下游列自动标记为「已发送」。按最佳 ABA 排名、出现次数排序。</p>
+<table><thead><tr><th>#</th><th>词根</th><th>类型</th><th>最佳排名</th><th>出现</th><th>修饰词</th><th>选品雷达</th><th>SIF词根</th></tr></thead><tbody id="rows"></tbody></table>
 <script type="module" src="js/app.js"></script></body></html>
