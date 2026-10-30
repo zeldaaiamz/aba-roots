@@ -68,3 +68,8 @@ curl -s -X POST "https://oiymgpargbesvcfxyksj.supabase.co/rest/v1/rpc/aba_mark_s
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` 只放在下游服务器环境变量中，切勿放进前端或提交到仓库。
+
+## 词根中文（migration 005）
+- `aba_root_words.root_zh`：词根简短中文（如 backpack → 背包）。`aba_claim_batch` / `aba_list_roots` 末列追加 `root_zh`，授权不变。
+- 管线每次跑完自动调用 `translate_missing()`：把 `root_zh` 为空的词根按 200 个一批交给豆包（同模型、关闭思考）翻译后写回；失败不影响词根入库，下次重跑补齐。
+- 下游展示约定：`en（中文）`；`root_zh` 为空时只显示英文。

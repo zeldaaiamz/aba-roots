@@ -23,11 +23,11 @@ async function load() {
   const [flt, cons] = $("#ff").value.split(":");
   const rows = await rpc("aba_list_roots", { p_filter: flt, p_consumer: cons || null, p_limit: n, p_offset: offset, p_q: $("#fq").value.trim() || null });
   total = rows.length ? +rows[0].total : 0;
-  $("#rows").innerHTML = rows.map((r, i) => `<tr><td>${offset + i + 1}</td><td class="root">${esc(r.root_word)}</td>
+  $("#rows").innerHTML = rows.map((r, i) => `<tr><td>${offset + i + 1}</td><td class="root">${esc(r.root_word)}</td><td>${esc(r.root_zh||"")}</td>
 <td><span class="t t-${esc(r.root_type)}">${esc(r.root_type)}</span>${r.is_name_ip ? '<span class="t ip">人名/IP</span>' : ""}</td>
 <td>${r.best_rank ?? "—"}</td><td>${r.term_count}</td>
 <td class="ex">${(r.modifiers || []).map((e) => `<span>${esc(e)}</span>`).join("") || "—"}</td>
-<td>${st(r.radar_sent_at)}</td><td>${st(r.sif_sent_at)}</td></tr>`).join("") || `<tr><td colspan="8">没有数据</td></tr>`;
+<td>${st(r.radar_sent_at)}</td><td>${st(r.sif_sent_at)}</td></tr>`).join("") || `<tr><td colspan="9">没有数据</td></tr>`;
   const pages = Math.max(1, Math.ceil(total / n));
   $("#page").textContent = ` 第 ${Math.floor(offset / n) + 1}/${pages} 页（${total} 条） `;
   $("#prev").disabled = offset === 0; $("#next").disabled = offset + n >= total;

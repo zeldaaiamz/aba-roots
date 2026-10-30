@@ -11,6 +11,8 @@ create table if not exists aba_root_words (
   status_at timestamptz, status_by text,
   create_time timestamptz not null default now()
 );
+alter table aba_root_words add column if not exists root_zh text;  -- 词根中文（translate_missing 补齐）
+
 create table if not exists aba_modifiers (
   id bigserial primary key, modifier text not null unique, source text,
   create_time timestamptz not null default now()
